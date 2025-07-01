@@ -1,18 +1,19 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
-const User = require("../models/User")
+const User = require("../models/User");
+const { nanoid } = require('nanoid');
 
 async function loginHandler(req, res) {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(400).json({ message: "Invalid email or password" });
+    const user = await User.query('email').using('email-index').eq(email.toLowerCase()).exec()
+    if (user.length === 0) return res.status(400).json({ message: "Invalid email or password" })
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(password, user[0].password);
     if (!isMatch) return res.status(400).json({ message: "Invalid email or password" });
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ userId: user[0]._id }, process.env.JWT_SECRET, {
       expiresIn: "1hr",
     });
 
@@ -27,12 +28,13 @@ async function registerHandler(req, res) {
   try {
     const { email, password, name } = req.body;
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
+    const existingUser = await User.query("email").using("email-index").eq(email.toLowerCase()).exec()
+    if (existingUser.length > 0) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = await User.create({
+      _id: nanoid(),
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
@@ -61,9 +63,10 @@ async function forgetPasswordHandler(req, res) {
   try {
     const { email, password, newPassword } = req.body;
 
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) return res.status(404).json({ message: "User not found." });
+    const existingUser = await User.query("email").using("email-index").eq(email.toLowerCase()).exec()
+    if (existingUser.length === 0) return res.status(404).json({ message: "User not found." });
 
+    const user = existingUser[0]
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Current password is incorrect." });
@@ -74,7 +77,6 @@ async function forgetPasswordHandler(req, res) {
     await user.save();
 
     res.status(200).json({ message: "Password updated successfully." });
-
   } catch (error) {
     console.error("Forget password error:", error);
     res.status(500).json({ message: "Something went wrong." });

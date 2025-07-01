@@ -1,4 +1,6 @@
 const User = require("../models/User")
+const Feedback = require("../models/Feedback")
+
 
 const router = require("express").Router()
 
@@ -7,19 +9,15 @@ router.post('/', async (req, res) => {
         const limit = req.body.limit;
         const userId = req.user.userId;
 
-        const history = await User
-            .findById(userId)
-            .populate({
-                path: "feedbacks",
-                options: {
-                    sort: { createdAt: -1 },
-                    limit: limit
-                }
-            })
-            .lean()
+        const feedbacks = await Feedback.query('userId')
+            .using('userId-index')
+            .eq(userId)
+            .sort('descending')
+            .limit(limit)
+            .exec()
 
         return res.json({
-            data: history.feedbacks
+            data: feedbacks
         })
     } catch (error) {
         return res.status(400).json({ error: error.message })

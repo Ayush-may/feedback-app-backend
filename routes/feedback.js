@@ -1,6 +1,7 @@
 const { default: axios } = require("axios");
 const User = require("../models/User");
 const Feedback = require("../models/Feedback");
+const { nanoid } = require("nanoid");
 
 const router = require("express").Router()
 
@@ -9,8 +10,7 @@ router.post('/', async (req, res) => {
         const text = req.body.text;
         const userId = req.user.userId;
 
-        const user = await User
-            .findById(userId)
+        const user = await User.get(userId)
 
         const promptText = `
         You are an expert reviewer. The following is a user-submitted text. Please provide clear, constructive, and helpful feedback on:
@@ -41,6 +41,7 @@ router.post('/', async (req, res) => {
         const aiText = aiResponse.data.candidates[0].content.parts[0].text;
 
         const feedback = Feedback.create({
+            _id: await nanoid(),
             userId: user._id,
             user_input: text,
             feedback: aiText,

@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
+const User = require('./models/User')
 
 const app = express();
 app.use(cors({
@@ -15,7 +16,10 @@ app.use('/api/feedback', require('./middlewares/authMiddleware'), require('./rou
 app.use('/api/history', require('./middlewares/authMiddleware'), require('./routes/history'));
 app.use('/api/auth/validate', require('./routes/validate'));
 
-mongoose.connect(process.env.MONGO_URI).then(() => {
-    console.log('MongoDB is connected')
-    app.listen(5000, () => console.log("Server running on 5000"));
+app.listen(5000, async () => {
+    console.log('Listening on port 5000')
 });
+
+// mongoose.connect(process.env.MONGO_URI).then(() => {
+//     console.log('MongoDB is connected')
+// });
